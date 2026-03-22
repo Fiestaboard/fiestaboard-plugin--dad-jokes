@@ -37,7 +37,9 @@
   ],
   "variables": {
     "groups": {
-      "main": { "label": "Joke" }
+      "main": {
+        "label": "Joke"
+      }
     },
     "simple": {
       "joke": {
@@ -49,5 +51,13 @@
       }
     }
   },
-  "fiestaboard_version": ">=2.10.0"
+  "fiestaboard_version": ">=2.10.0",
+  "screenshots": [
+    {
+      "src": "docs/board-display.png",
+      "alt": "Dad Jokes displayed on a Vestaboard",
+      "caption": "Display random dad jokes from the icanhazdadjoke API",
+      "primary": true
+    }
+  ]
 }
