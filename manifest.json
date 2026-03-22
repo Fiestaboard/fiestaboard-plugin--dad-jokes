@@ -36,12 +36,18 @@
     }
   ],
   "variables": {
-    "simple": [
-      "joke"
-    ]
-  },
-  "max_lengths": {
-    "joke": 120
+    "groups": {
+      "main": { "label": "Joke" }
+    },
+    "simple": {
+      "joke": {
+        "description": "The full dad joke text",
+        "type": "string",
+        "max_length": 120,
+        "group": "main",
+        "example": "Why don't skeletons fight? They don't have the guts."
+      }
+    }
   },
   "fiestaboard_version": ">=2.10.0"
 }
