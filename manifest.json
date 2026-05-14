@@ -1,7 +1,7 @@
 {
   "id": "dad_jokes",
   "name": "Dad Jokes",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Display random dad jokes from the icanhazdadjoke API",
   "author": "FiestaBoard Team",
   "repository": "https://github.com/Fiestaboard/fiestaboard-plugin--dad-jokes",
