@@ -1,7 +1,7 @@
 {
   "id": "dad_jokes",
   "name": "Dad Jokes",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Display random dad jokes from the icanhazdadjoke API",
   "author": "FiestaBoard Team",
   "repository": "https://github.com/Fiestaboard/fiestaboard-plugin--dad-jokes",
@@ -61,41 +61,64 @@
     }
   ],
   "demo": {
-    "name": "Dad Jokes Demo",
-    "device_type": "flagship",
-    "template": [
-      "",
-      "",
-      "{{dad_jokes.joke}}",
-      "",
-      "",
-      ""
-    ],
-    "line_metadata": [
-      {
-        "alignment": "center",
-        "wrap": false
-      },
-      {
-        "alignment": "center",
-        "wrap": false
-      },
-      {
-        "alignment": "center",
-        "wrap": true
-      },
-      {
-        "alignment": "center",
-        "wrap": false
-      },
-      {
-        "alignment": "center",
-        "wrap": false
-      },
-      {
-        "alignment": "center",
-        "wrap": false
-      }
-    ]
+    "flagship": {
+      "name": "Dad Jokes Demo",
+      "template": [
+        "",
+        "",
+        "{{dad_jokes.joke}}",
+        "",
+        "",
+        ""
+      ],
+      "line_metadata": [
+        {
+          "alignment": "center",
+          "wrap": false
+        },
+        {
+          "alignment": "center",
+          "wrap": false
+        },
+        {
+          "alignment": "center",
+          "wrap": true
+        },
+        {
+          "alignment": "center",
+          "wrap": false
+        },
+        {
+          "alignment": "center",
+          "wrap": false
+        },
+        {
+          "alignment": "center",
+          "wrap": false
+        }
+      ]
+    },
+    "note": {
+      "name": "Dad Jokes (Note)",
+      "template": [
+        "DAD JOKES",
+        "{{dad_jokes.joke}}",
+        ""
+      ],
+      "line_metadata": [
+        {
+          "alignment": "left",
+          "wrap": false
+        },
+        {
+          "alignment": "left",
+          "wrap": true
+        },
+        {
+          "alignment": "left",
+          "wrap": false
+        }
+      ]
+    }
   }
 }
