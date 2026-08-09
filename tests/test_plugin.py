@@ -7,7 +7,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 
 from plugins.dad_jokes import DadJokesPlugin
-from src.plugins.base import PluginResult
+from src.plugins.base import _DEFAULT_CACHE_KEY, DEFAULT_REFRESH_SECONDS, PluginResult
 from src.plugins.testing import PluginTestCase, create_mock_response
 
 
@@ -305,14 +305,14 @@ class TestDadJokesPlugin:
         plugin.get_data()
         assert mock_get.call_count == 1
 
-        plugin._last_fetch_time = datetime.now() - timedelta(seconds=120)
+        plugin._last_fetch_times[_DEFAULT_CACHE_KEY] = datetime.now() - timedelta(seconds=120)
 
         plugin.get_data()
         assert mock_get.call_count == 2
 
     @patch("plugins.dad_jokes.requests.get")
-    def test_get_data_no_cache_without_schema(self, mock_get, plugin_bare):
-        """Test get_data always fetches fresh when manifest has no refresh_seconds."""
+    def test_get_data_uses_default_cache_without_schema(self, mock_get, plugin_bare):
+        """Test get_data falls back to the default cache when manifest has no refresh_seconds."""
         mock_response = Mock()
         mock_response.json.return_value = {
             "id": "abc123",
@@ -323,6 +323,13 @@ class TestDadJokesPlugin:
         mock_get.return_value = mock_response
 
         plugin_bare.get_data()
+        plugin_bare.get_data()
+        assert mock_get.call_count == 1
+
+        plugin_bare._last_fetch_times[_DEFAULT_CACHE_KEY] = datetime.now() - timedelta(
+            seconds=DEFAULT_REFRESH_SECONDS + 1
+        )
+
         plugin_bare.get_data()
         assert mock_get.call_count == 2
 
@@ -355,9 +362,9 @@ class TestDadJokesPlugin:
         plugin._config = {"refresh_seconds": 120}
         assert plugin.refresh_seconds == 120
 
-    def test_refresh_seconds_none_without_schema(self, plugin_bare):
-        """Test refresh_seconds returns None without manifest schema."""
-        assert plugin_bare.refresh_seconds is None
+    def test_refresh_seconds_default_without_schema(self, plugin_bare):
+        """Test refresh_seconds falls back to the base default without manifest schema."""
+        assert plugin_bare.refresh_seconds == DEFAULT_REFRESH_SECONDS
 
 
 class TestManifestMetadata:
