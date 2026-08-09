@@ -60,6 +60,28 @@
       "primary": true
     }
   ],
+  "teaser": "DAD JOKES DAILY",
+  "previews": [
+    {
+      "device_type": "flagship",
+      "rows": [
+        "{65}{65}{65}{65}{65}{65}{65}{65}{65}{65}{65}{65}{65}{65}{65}{65}{65}{65}{65}{65}{65}{65}",
+        "",
+        "  WHAT DO YOU CALL A",
+        "     FAKE NOODLE?",
+        "",
+        "     AN IMPASTA!"
+      ]
+    },
+    {
+      "device_type": "note",
+      "rows": [
+        "{65}{65} DAD JOKES",
+        "I'M HUNGRY.",
+        "HI HUNGRY, DAD"
+      ]
+    }
+  ],
   "demo": {
     "flagship": {
       "name": "Dad Jokes Demo",
