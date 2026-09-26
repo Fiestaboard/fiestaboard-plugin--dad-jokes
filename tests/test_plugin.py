@@ -6,9 +6,20 @@ import json
 from pathlib import Path
 from datetime import datetime, timedelta
 
-from plugins.dad_jokes import DadJokesPlugin
+from plugins.dad_jokes import DadJokesPlugin, _fit_joke_lines, _lines_for_board, _wrap_joke
+from src.devices import BoardContext
 from src.plugins.base import _DEFAULT_CACHE_KEY, DEFAULT_REFRESH_SECONDS, PluginResult
 from src.plugins.testing import PluginTestCase, create_mock_response
+
+# A joke long enough that, wrapped to 15 tiles (a Note's width), it needs
+# more lines than a Note (3 rows) or a 1x4 note_array panel (12 rows) has
+# room for -- so truncation and growth are both actually exercised rather
+# than trivially satisfied by a short joke that always fits.
+_LONG_JOKE = (
+    "I told my computer I needed a break, and now it will not stop sending "
+    "me vacation ads for a beach that does not seem to actually exist "
+    "anywhere on any map."
+)
 
 
 MANIFEST_WITH_REFRESH = {
@@ -406,6 +417,109 @@ class TestManifestMetadata:
         assert len(groups) > 0, "Manifest should define at least one group"
         for group_id, group_def in groups.items():
             assert "label" in group_def, f"Group '{group_id}' missing label"
+
+    def test_previews_cover_note_array(self):
+        manifest_path = Path(__file__).parent.parent / "manifest.json"
+        with open(manifest_path) as f:
+            manifest = json.load(f)
+        shapes = {p.get("device_type") for p in manifest.get("previews", [])}
+        assert "note_array" in shapes
+
+
+class TestBoardAdaptivity:
+    """Unit tests for the board-geometry helpers behind get_formatted_display
+    and fetch_data's formatted_lines, independent of the shared conformance
+    suite (tests/test_geometry_conformance.py)."""
+
+    @pytest.fixture
+    def plugin(self):
+        return DadJokesPlugin(MANIFEST_WITH_REFRESH)
+
+    def test_wrap_joke_hard_breaks_a_word_wider_than_the_board(self):
+        """A single word longer than the board's width must still be split;
+        letting it through would violate ROW_TOO_WIDE on a narrow Note."""
+        lines = _wrap_joke("Supercalifragilisticexpialidocious", cols=10)
+        assert all(len(line) <= 10 for line in lines)
+        assert "".join(lines) == "Supercalifragilisticexpialidocious"
+
+    def test_wrap_joke_uses_cols_not_a_literal_width(self):
+        """Wrap width must come from the passed cols, not a hardcoded 22."""
+        wrapped_note = _wrap_joke(_LONG_JOKE, cols=15)
+        wrapped_flagship = _wrap_joke(_LONG_JOKE, cols=22)
+        assert all(len(line) <= 15 for line in wrapped_note)
+        assert all(len(line) <= 22 for line in wrapped_flagship)
+        # A wider budget must not need more lines than a narrower one.
+        assert len(wrapped_flagship) < len(wrapped_note)
+
+    def test_fit_joke_lines_keeps_the_ending_when_it_overflows(self):
+        """Truncation must drop the setup, not the punchline."""
+        wrapped = _wrap_joke(_LONG_JOKE, cols=15)
+        fitted = _fit_joke_lines(wrapped, rows=3, cols=15)
+        assert len(fitted) == 3
+        # The last wrapped line ("map.") must survive into the fitted output.
+        assert "map." in fitted[-1]
+        # The very first wrapped line ("I told my") must NOT have survived.
+        assert not any(line.strip() == "I told my" for line in fitted)
+
+    def test_lines_for_board_note_is_full_and_truncated(self):
+        note = BoardContext(device_type="note", rows=3, cols=15)
+        lines = _lines_for_board(note, _LONG_JOKE)
+        assert len(lines) == 3
+        assert all(len(line) <= 15 for line in lines)
+
+    def test_lines_for_board_grows_on_a_taller_board(self):
+        """Holding width constant, a taller board must show more of the
+        joke than a shorter one that was already full -- the behavior
+        strict_growth=True checks in the conformance suite."""
+        note = BoardContext(device_type="note", rows=3, cols=15)
+        tall_panel = BoardContext(device_type="note_array", rows=12, cols=15)
+
+        note_lines = [l for l in _lines_for_board(note, _LONG_JOKE) if l.strip()]
+        panel_lines = [l for l in _lines_for_board(tall_panel, _LONG_JOKE) if l.strip()]
+
+        assert len(note_lines) == 3  # Note was full
+        assert len(panel_lines) > len(note_lines)  # taller board shows more
+
+    def test_lines_for_board_none_defaults_to_flagship(self):
+        """self.board is None outside a board-scoped render; that must be
+        treated as a Flagship (22x6), never crash."""
+        lines = _lines_for_board(None, "Why did the chicken cross the road?")
+        assert 0 < len(lines) <= 6
+        assert all(len(line) <= 22 for line in lines)
+
+    @patch("plugins.dad_jokes.requests.get")
+    def test_fetch_data_sets_formatted_lines(self, mock_get, plugin):
+        """The live render path (src/displays/service.py) reads
+        formatted_lines, not get_formatted_display() -- fetch_data must set
+        it, or the board-aware layout never reaches a real board."""
+        mock_response = Mock()
+        mock_response.json.return_value = {"joke": _LONG_JOKE, "status": 200}
+        mock_response.raise_for_status = Mock()
+        mock_get.return_value = mock_response
+
+        with plugin._bound_board(BoardContext(device_type="note", rows=3, cols=15)):
+            result = plugin.fetch_data()
+
+        assert result.formatted_lines is not None
+        assert len(result.formatted_lines) <= 3
+        assert all(len(line) <= 15 for line in result.formatted_lines)
+
+    @patch("plugins.dad_jokes.requests.get")
+    def test_fetch_data_formatted_lines_adapt_to_board(self, mock_get, plugin):
+        """The same joke, rendered for two different boards, must produce
+        different amounts of content -- proof formatted_lines is actually
+        board-aware and not a fixed six lines regardless of self.board."""
+        mock_response = Mock()
+        mock_response.json.return_value = {"joke": _LONG_JOKE, "status": 200}
+        mock_response.raise_for_status = Mock()
+        mock_get.return_value = mock_response
+
+        with plugin._bound_board(BoardContext(device_type="note", rows=3, cols=15)):
+            note_result = plugin.fetch_data()
+        with plugin._bound_board(BoardContext(device_type="note_array", rows=12, cols=15)):
+            panel_result = plugin.fetch_data()
+
+        assert len(panel_result.formatted_lines) > len(note_result.formatted_lines)
 
 
 Plugin = DadJokesPlugin
